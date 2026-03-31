@@ -41,3 +41,146 @@ index.html	Chứa CodeMirror (nhập code) và Mermaid.js (vẽ sơ đồ).	HTML
  
  
 Nguyễn Đức Minh - 25521111
+
+
+
+
+
+
+#cách dùng hàm main - fronten
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import Alltools  # Import file logic của bạn
+
+app = FastAPI()
+
+# Cấu hình CORS để Frontend (index.html) có thể gọi API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Khai báo cấu trúc dữ liệu gửi lên từ Web
+class CodeRequest(BaseModel):
+    mode: str    # "online" hoặc "offline"
+    choice: str  # "1", "2", hoặc "3"
+    doc: str     # Đoạn mã nguồn cần phân tích
+
+@app.post("/analyze")
+async def analyze(request: CodeRequest):
+    try:
+        # Gọi hàm analyze_code từ file Alltools.py
+        result = Alltools.analyze_code(request.mode, request.choice, request.doc)
+        
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+//cách dùng trên javascript (VD) - frontend :
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Code Analyzer - UIT K20</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-4 text-blue-600">AI Code Analyzer (Minh - 25521111)</h1>
+        
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <select id="mode" class="border p-2 rounded">
+                <option value="online">Online (Groq - Llama 3.3)</option>
+                <option value="offline">Offline (Ollama - Qwen 2.5)</option>
+            </select>
+            <select id="choice" class="border p-2 rounded">
+                <option value="1">Vẽ Flowchart (Mermaid)</option>
+                <option value="2">Mô tả Logic</option>
+                <option value="3">Phân tích Độ phức tạp</option>
+            </select>
+        </div>
+
+        <textarea id="code-input" class="w-full h-48 p-3 border rounded font-mono text-sm mb-4" placeholder="Dán code của bạn vào đây..."></textarea>
+        
+        <button onclick="processCode()" id="btn-run" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 w-full transition">Phân tích ngay</button>
+
+        <div id="result-container" class="mt-8 hidden">
+            <h2 class="font-semibold text-lg border-b pb-2 mb-4">KẾT QUẢ:</h2>
+            
+            <div id="text-result" class="whitespace-pre-wrap text-gray-700 bg-gray-50 p-4 rounded"></div>
+            
+            <div id="mermaid-result" class="mermaid flex justify-center"></div>
+        </div>
+    </div>
+
+    <script>
+        // Khởi tạo mermaid
+        mermaid.initialize({ startOnLoad: false });
+
+        async function processCode() {
+            const btn = document.getElementById('btn-run');
+            const resultContainer = document.getElementById('result-container');
+            const textResult = document.getElementById('text-result');
+            const mermaidResult = document.getElementById('mermaid-result');
+
+            // Lấy dữ liệu từ form
+            const payload = {
+                mode: document.getElementById('mode').value,
+                choice: document.getElementById('choice').value,
+                doc: document.getElementById('code-input').value
+            };
+
+            if (!payload.doc.trim()) return alert("Vui lòng nhập code!");
+
+            // Trạng thái Loading
+            btn.innerText = "Đang xử lý...";
+            btn.disabled = true;
+            resultContainer.classList.add('hidden');
+
+            try {
+                const response = await fetch('http://localhost:8000/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                resultContainer.classList.remove('hidden');
+                textResult.innerText = "";
+                mermaidResult.innerHTML = "";
+                mermaidResult.removeAttribute('data-processed');
+
+                if (result.type === "mermaid") {
+                    // Xử lý render sơ đồ
+                    const code = result.data;
+                    // Mermaid cần insert text vào rồi mới init
+                    mermaidResult.innerHTML = code;
+                    await mermaid.run({ nodes: [mermaidResult] });
+                } else {
+                    // Hiển thị text logic hoặc complexity
+                    textResult.innerText = result.data;
+                }
+            } catch (err) {
+                alert("Lỗi kết nối Backend: " + err.message);
+            } finally {
+                btn.innerText = "Phân tích ngay";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
