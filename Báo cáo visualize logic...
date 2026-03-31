@@ -1,0 +1,43 @@
+ 
+BÁO CÁO CHI TIẾT: CÔNG CỤ PHÂN TÍCH MÃ NGUỒN THÔNG MINH
+Sinh viên thực hiện: Nguyễn Đức Minh - 25521111 - UIT (K20)
+ 
+1. KIẾN TRÚC HỆ THỐNG (SYSTEM ARCHITECTURE)
+Dự án được xây dựng theo mô hình Client-Server hiện đại, tách biệt hoàn toàn giữa logic xử lý và giao diện hiển thị:
+•	Core Logic (Alltools.py): Đóng vai trò là "Engine" xử lý dữ liệu thô, gọi AI và chuẩn hóa kết quả.
+•	Backend (main.py - FastAPI): Đóng vai trò là "Bridge" (Cầu nối), tiếp nhận Request từ người dùng và điều phối các hàm trong Engine.
+•	Frontend (index.html): Đóng vai trò là "Presenter", chịu trách nhiệm hiển thị dữ liệu một cách trực quan.
+ 
+2. LUỒNG XỬ LÝ DỮ LIỆU (DATA FLOW)
+Để đảm bảo tính ổn định, quy trình được thiết kế như sau:
+1.	Gửi yêu cầu: Người dùng dán code vào giao diện Web (Frontend) và nhấn nút gửi.
+2.	Xử lý tại Backend: * main.py nhận mã nguồn qua phương thức POST.
+o	Backend gọi hàm analyze_code() trong Alltools.py.
+o	AI xử lý và trả về mã Mermaid (dạng text) hoặc nội dung mô tả.
+o	Hàm clean_mermaid thực hiện "dọn dẹp" (sanitizing) mã để đảm bảo không chứa ký tự gây lỗi render.
+3.	Phản hồi JSON: Backend trả về một đối tượng JSON chứa kết quả đã được làm sạch.
+4.	Render tại Frontend:
+o	Frontend nhận dữ liệu JSON.
+o	Nếu là loại mermaid, Frontend sử dụng thư viện Mermaid.js để biên dịch mã text thành sơ đồ đồ họa.
+o	Nếu là logic hoặc complexity, Frontend hiển thị văn bản theo định dạng đẹp mắt.
+ 
+3. GIẢI THÍCH CHI TIẾT CƠ CHẾ "BACKEND CALL - FRONTEND RENDER"
+Tại sao chúng ta không để AI trả về hình ảnh luôn mà phải qua bước này?
+A. Tại Backend
+•	Tại sao gọi AI ở đây? Việc gọi API (Groq) hoặc Model nội bộ (Ollama) yêu cầu bảo mật Key và tài nguyên tính toán. Thực hiện ở Backend giúp bảo vệ GROQ_API_KEY không bị lộ ra phía Client.
+•	Hậu xử lý (Cleaning): AI đôi khi trả về các ký tự dư thừa như ```mermaid. Backend sẽ dùng Regex để lọc bỏ những thứ này, chỉ giữ lại đúng cú pháp graph TD... chuẩn.
+B. Tại Frontend
+•	Tính linh hoạt: Frontend nhận mã text và tự vẽ lại bằng JavaScript. Điều này giúp sơ đồ có độ sắc nét cực cao (dạng vector SVG), có thể phóng to/thu nhỏ mà không bị vỡ ảnh.
+•	Tăng trải nghiệm: Nếu AI trả về hình ảnh trực tiếp, dung lượng truyền tải sẽ lớn. Trả về mã text (Mermaid script) rất nhẹ, giúp ứng dụng chạy mượt mà ngay cả khi mạng yếu.
+ 
+4. CHI TIẾT CÁC THÀNH PHẦN FILE
+File	Vai trò cụ thể	Công nghệ
+Alltools.py	Chứa 3 Prompts chuyên biệt và hàm call_ai. Thực hiện lọc lỗi cú pháp Mermaid.	Python, Requests, Re
+main.py	Tạo API Endpoint (ví dụ: /analyze). Chuyển tiếp dữ liệu từ Web tới AI Engine.	FastAPI, Uvicorn
+index.html	Chứa CodeMirror (nhập code) và Mermaid.js (vẽ sơ đồ).	HTML, JS, TailwindCSS
+ 
+5. HƯỚNG DẪN CÀI ĐẶT NHANH
+---------------Để sau – trong READme trên github--------------
+ 
+ 
+Nguyễn Đức Minh - 25521111
